@@ -21,13 +21,13 @@ enhance: 4
 ###============================= SETTINGS ===================================###
 DATA_SIZE = 'half' # (small, half or all)
 
-save_dir = "data/train_dev_all/"
+save_dir = "./data/train_dev_all/"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-HGG_data_path = "data/Brats17TrainingData/HGG"
-LGG_data_path = "data/Brats17TrainingData/LGG"
-survival_csv_path = "data/Brats17TrainingData/survival_data.csv"
+HGG_data_path = "./data/Brats17TrainingData/HGG"
+LGG_data_path = "./data/Brats17TrainingData/LGG"
+survival_csv_path = "./data/Brats17TrainingData/survival_data.csv"
 ###==========================================================================###
 
 survival_id_list = []
