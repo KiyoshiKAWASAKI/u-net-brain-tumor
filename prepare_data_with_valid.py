@@ -8,7 +8,7 @@ import nibabel as nib
 In seg file
 --------------
 Label 1: necrotic and non-enhancing tumor
-Label 2: edema 
+Label 2: edema
 Label 4: enhancing tumor
 Label 0: background
 
