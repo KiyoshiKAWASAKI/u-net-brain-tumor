@@ -89,7 +89,7 @@ def main(task='all'):
     # lr_decay = 0.5
     # decay_every = 100
     beta1 = 0.9
-    n_epoch = 100
+    n_epoch = 50
     print_freq_step = 100
 
     ###======================== SHOW DATA ===================================###
