@@ -30,6 +30,7 @@ LGG_data_path = "./data/Brats17TrainingData/LGG"
 survival_csv_path = "./data/Brats17TrainingData/survival_data.csv"
 ###==========================================================================###
 
+# Read the csv file and save info
 survival_id_list = []
 survival_age_list =[]
 survival_peroid_list = []
@@ -42,7 +43,7 @@ with open(survival_csv_path, 'r') as f:
         survival_age_list.append(float(content[1]))
         survival_peroid_list.append(float(content[2]))
 
-print(len(survival_id_list)) #163
+print(len(survival_id_list)) # 163 patients in total
 
 if DATA_SIZE == 'all':
     HGG_path_list = tl.files.load_folder_list(path=HGG_data_path)
@@ -112,6 +113,7 @@ survival_id_dev_LGG = [LGG_name_list[i] for i in dev_index_LGG]
 survival_id_test_LGG = [LGG_name_list[i] for i in test_index_LGG]
 survival_id_tr_LGG = [LGG_name_list[i] for i in tr_index_LGG]
 
+# Age and period only have HGG data
 survival_age_dev = [survival_age_list[survival_id_list.index(i)] for i in survival_id_dev_HGG]
 survival_age_test = [survival_age_list[survival_id_list.index(i)] for i in survival_id_test_HGG]
 survival_age_tr = [survival_age_list[survival_id_list.index(i)] for i in survival_id_tr_HGG]
@@ -151,6 +153,7 @@ for i in data_types:
 del data_temp_list
 print(data_types_mean_std_dict)
 
+# Not clear about this function yet!
 with open(save_dir + 'mean_std_dict.pickle', 'wb') as f:
     pickle.dump(data_types_mean_std_dict, f, protocol=4)
 
