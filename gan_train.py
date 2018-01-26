@@ -118,7 +118,8 @@ def main(task='all'):
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
             ## train inference
-            net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
+            net = model.u_net(t_image, is_train=True, reuse=True, n_out=1)
+            discriminator = model.discriminator(net, is_train=True, reuse = False)
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 
@@ -138,7 +139,7 @@ def main(task='all'):
 
         ###======================== DEFINE TRAIN OPTS =======================###
         t_vars = tl.layers.get_variables_with_name('u_net', True, True)
-        with tf.device('/gpu:0'):
+        with tf.device('/gpu'):
             with tf.variable_scope('learning_rate'):
                 lr_v = tf.Variable(lr, trainable=False)
             train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(loss, var_list=t_vars)

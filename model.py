@@ -4,7 +4,7 @@ from tensorlayer.layers import *
 import numpy as np
 
 
-from tensorlayer.layers import *
+#from tensorlayer.layers import *
 def u_net(x, is_train=False, reuse=False, n_out=1):
     _, nx, ny, nz = x.get_shape().as_list()
     with tf.variable_scope("u_net", reuse=reuse):
