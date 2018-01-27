@@ -55,14 +55,16 @@ def u_net(x, is_train=False, reuse=False, n_out=1):
 	return conv1
 
 # Define discriminator
+
 def discriminator(x, is_train=True, reuse=False):
 	with tf.variable_scope("discriminator", reuse=reuse):
 		tl.layers.set_name_reuse(reuse)
+		nx = ny = 240
 
 		# Input size: [10,240,240,1]
 		inputs = x
 		inputs = inputs + tf.random_normal(shape=tf.shape(x), mean=0.0, stddev=0.01)
-		#inputs = tf.reshape(inputs, (-1, 64, 64, 3))
+		inputs = tf.reshape(inputs, (-1, 240, 240, 1))
 		inputs = InputLayer(inputs, name='inputs')
 
 		conv1 = Conv2d(inputs, 32, (4, 4), act=tf.nn.leaky_relu, name='conv1')
@@ -72,17 +74,17 @@ def discriminator(x, is_train=True, reuse=False):
 		ffc1 = DenseLayer(ffc1, 512, act=tf.nn.leaky_relu, name='ffc1')
 		zz = DenseLayer(ffc1, 200, act=tf.nn.leaky_relu, name='zz')
 		fc1 = DenseLayer(zz, 512, act=tf.nn.leaky_relu, name='fc1')
-		fc2 = DenseLayer(fc1, 128*8*8, (4, 4), act=tf.nn.leaky_relu, name='fc2')
-		fc2 = tf.reshape(fc2, (-1, 8, 8, 128))
-		deconv1 = DeConv2d(fc2, 64, (4, 4), (2, 2), name='deconv1')
-		deconv2 = DeConv2d(deconv1, 32, (4, 4), (2, 2), name='deconv2')
-		out = DeConv2d(deconv2, 3, (4, 4), (2, 2), act=tf.nn.sigmoid, bn=False, name='deconv2')
+		fc2 = DenseLayer(fc1, 128*8*8, act=tf.nn.leaky_relu, name='fc2')
+		fc2 = tf.reshape(fc2.outputs, (-1, 8, 8, 128))
+		fc2_input = InputLayer(fc2, name='inputs_fc2')
+		deconv1 = DeConv2d(fc2_input, 64, (4, 4), (nx/4, ny/4), (2, 2), name='deconv1')
+		deconv2 = DeConv2d(deconv1, 32, (4, 4), (nx/2, ny/2), (2, 2), name='deconv2')
+		result = DeConv2d(deconv2, 1, (4, 4), (nx/1, ny/1),(2, 2), act=tf.nn.sigmoid, name='output')
 	
-	resid = tf.abs(x-out)
+	resid = tf.abs(x - result.outputs)
 	loss=tf.reduce_mean(resid)
 
 	return loss
-
 
 """
 
@@ -131,6 +133,36 @@ def discriminator(x, is_train=True, reuse=False):
 
 	return loss
 """
+"""
+def discriminator(x, is_train=True, reuse=False):
+	with tf.variable_scope("discriminator", reuse=reuse):
+		tl.layers.set_name_reuse(reuse)
+
+		# Input size: [10,240,240,1]
+		inputs = x
+		inputs = inputs + tf.random_normal(shape=tf.shape(x), mean=0.0, stddev=0.01)
+		inputs = tf.reshape(inputs, (-1, 240, 240, 1))
+		inputs = InputLayer(inputs, name='inputs')
+
+		conv1 = Conv2d(inputs, 32, (4, 4), act=tf.nn.leaky_relu, name='conv1')
+		conv2 = Conv2d(conv1, 64, (4, 4), act=tf.nn.leaky_relu, name='conv2')
+		ffc2 = Conv2d(conv2, 128, (4, 4), act=tf.nn.leaky_relu, name='ffc2')
+		ffc1 = FlattenLayer(ffc2, name='flatten_layer')
+		ffc1 = DenseLayer(ffc1, 512, act=tf.nn.leaky_relu, name='ffc1')
+		zz = DenseLayer(ffc1, 200, act=tf.nn.leaky_relu, name='zz')
+		fc1 = DenseLayer(zz, 512, act=tf.nn.leaky_relu, name='fc1')
+		fc2 = DenseLayer(fc1, 128*8*8, act=tf.nn.leaky_relu, name='fc2')
+		fc2 = tf.reshape(fc2.outputs, (-1, 8, 8, 128))
+		fc2_input = InputLayer(fc2, name='inputs_fc2')
+		deconv1 = DeConv2d(fc2_input, 64, (4, 4), (2, 2), name='deconv1')
+		deconv2 = DeConv2d(deconv1, 32, (4, 4), (2, 2), name='deconv2')
+		result = DeConv2d(deconv2, 1, (4, 4), (2, 2), act=tf.nn.sigmoid, name='output')
+	
+	resid = tf.abs(x - result.outputs)
+	loss=tf.reduce_mean(resid)
+
+	return loss
+"""
 
 
 """
@@ -149,7 +181,7 @@ with tf.sg_context(name='dis_2d', stride=2, act='leaky_relu', bn=bn, reuse=reuse
     deconv1 = fc2.sg_upconv(dim=64, stride=2, size=4, name='gen3')
     deconv2 = deconv1.sg_upconv(dim=32, stride=2, size=4, name='gen4')
     out = deconv2.sg_upconv(dim=3, stride=2, size=4, act='sigmoid', bn=False, name='gen5') 
-esid=tf.abs(x-out)r
+resid=tf.abs(x-out)
 loss=tf.reduce_mean(resid)
 return loss
 """
