@@ -118,9 +118,11 @@ def discriminator(self, x, is_train=True, reuse=False):
                                               scope='deconv1')
 
 			self.out = tf.nn.sigmoid(self.output)
-				
+	
+	resid = tf.abs(x - self.out)
+    loss = tf.reduce_mean(resid)			
 
-	return self.out
+	return loss
 
 
 	"""

@@ -119,17 +119,18 @@ def main(task='all'):
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
             ## train inference
             net = model.u_net(t_image, is_train=True, reuse=True, n_out=1)
-            discriminator = model.discriminator(net, is_train=True, reuse = False)
+            d_loss = model.discriminator(net, is_train=True, reuse = False)
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 
             ###======================== DEFINE LOSS =========================###
-            ## train losses
+            ## train losses for the generator
             out_seg = net.outputs
             dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
-            dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
-            loss = dice_loss
+            dice_hard = tl.cosself.outt.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
+            ## Total loss
+            loss = dice_loss + d_loss
 
             ## test losses
             test_out_seg = net_test.outputs
