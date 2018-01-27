@@ -4,7 +4,8 @@
 import tensorflow as tf
 import tensorlayer as tl
 import numpy as np
-import os, time, model
+import os, time
+import gan_model as model
 
 def distort_imgs(data):
     """ data augumentation """
@@ -118,8 +119,9 @@ def main(task='all'):
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
             ## train inference
-            net = model.u_net(t_image, is_train=True, reuse=True, n_out=1)
-            d_loss = model.discriminator(net, is_train=True, reuse = False)
+            net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
+            net_result = net.outputs
+            d_loss = model.discriminator(net_result, is_train=True, reuse = False)
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 

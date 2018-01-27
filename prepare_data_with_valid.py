@@ -155,7 +155,7 @@ print(data_types_mean_std_dict)
 
 # Not clear about this function yet!
 with open(save_dir + 'mean_std_dict.pickle', 'wb') as f:
-    pickle.dump(data_types_mean_std_dict, f, protocol=4)
+    pickle.dump(data_types_mean_std_dict, f, protocol=2)
 
 
 ##==================== GET NORMALIZE IMAGES
