@@ -130,9 +130,10 @@ def main(task='all'):
             out_seg = net.outputs
             dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
-            dice_hard = tl.cosself.outt.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
+            dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
             ## Total loss
-            loss = dice_loss + d_loss
+            G_loss = dice_loss
+            D_loss = d_loss
 
             ## test losses
             test_out_seg = net_test.outputs
@@ -145,7 +146,7 @@ def main(task='all'):
         with tf.device('/gpu'):
             with tf.variable_scope('learning_rate'):
                 lr_v = tf.Variable(lr, trainable=False)
-            train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(loss, var_list=t_vars)
+            train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(G_loss, var_list=t_vars)
 
         ###======================== LOAD MODEL ==============================###
         tl.layers.initialize_global_variables(sess)
