@@ -85,7 +85,7 @@ def main(task='all'):
         exit("Unknow task %s" % task)
 
     ###======================== HYPER-PARAMETERS ============================###
-    batch_size = 10
+    batch_size = 4
     lr = 0.0001 
     # lr_decay = 0.5
     # decay_every = 100
