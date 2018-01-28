@@ -110,48 +110,48 @@ def main(task='all'):
         # print(X_dis.shape, X_dis.min(), X_dis.max()) # (240, 240, 4) -0.380588233471 2.62376139209
         vis_imgs(X_dis, label, 'samples/{}/_train_im_aug{}.png'.format(task, i))
 
-
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        #with tf.device('/gpu'): #<- remove it if you train on CPU or other GPU
+    with tf.device('/gpu:2'):
+        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+        with tf.device('/gpu:2'): #<- remove it if you train on CPU or other GPU
             ###======================== DEFIINE MODEL =======================###
             ## nz is 4 as we input all Flair, T1, T1c and T2.
-    t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
-    ## labels are either 0 or 1
-    t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
-    ## train inference
-    net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
-    net_result = net.outputs
-    d_loss = model.discriminator(net_result, is_train=True, reuse = False)
-    ## test inference
-    net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
+            t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
+            ## labels are either 0 or 1
+            t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
+            ## train inference
+            net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
+            net_result = net.outputs
+            d_loss = model.discriminator(net_result, is_train=True, reuse = False)
+            ## test inference
+            net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 
-    ###======================== DEFINE LOSS =========================###
-    ## train losses for the generator
-    out_seg = net.outputs
-    dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
-    iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
-    dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
-    ## Total loss
-    G_loss = dice_loss
-    D_loss = d_loss
+            ###======================== DEFINE LOSS =========================###
+            ## train losses for the generator
+            out_seg = net.outputs
+            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
+            iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
+            dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
+            ## Total loss
+            G_loss = dice_loss
+            D_loss = d_loss
 
-    ## test losses
-    test_out_seg = net_test.outputs
-    test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
-    test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=[0,1,2,3])
-    test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=[0,1,2,3])
+            ## test losses
+            test_out_seg = net_test.outputs
+            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
+            test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=[0,1,2,3])
+            test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=[0,1,2,3])
 
         ###======================== DEFINE TRAIN OPTS =======================###
-    t_vars = tl.layers.get_variables_with_name('u_net', True, True)
-        #with tf.device('/gpu'):
-    with tf.variable_scope('learning_rate'):
-        lr_v = tf.Variable(lr, trainable=False)
-    train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(G_loss, var_list=t_vars)
+        t_vars = tl.layers.get_variables_with_name('u_net', True, True)
+        with tf.device('/gpu:3'):
+            with tf.variable_scope('learning_rate'):
+                lr_v = tf.Variable(lr, trainable=False)
+            train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(G_loss, var_list=t_vars)
 
         ###======================== LOAD MODEL ==============================###
-    tl.layers.initialize_global_variables(sess)
+        tl.layers.initialize_global_variables(sess)
         ## load existing model if possible
-    tl.files.load_and_assign_npz(sess=sess, name=save_dir+'/u_net_{}.npz'.format(task), network=net)
+        tl.files.load_and_assign_npz(sess=sess, name=save_dir+'/u_net_{}.npz'.format(task), network=net)
 
         ###======================== TRAINING ================================###
     for epoch in range(0, n_epoch+1):
