@@ -70,6 +70,7 @@ def discriminator(x, is_train=True, reuse=False):
 		conv1 = Conv2d(inputs, 32, (4, 4), act=tf.nn.elu, name='conv1')
 		conv2 = Conv2d(conv1, 64, (4, 4), act=tf.nn.elu, name='conv2')
 		ffc2 = Conv2d(conv2, 128, (4, 4), act=tf.nn.elu, name='ffc2')
+		"""
 		ffc1 = FlattenLayer(ffc2, name='flatten_layer')
 		ffc1 = DenseLayer(ffc1, 512, act=tf.nn.elu, name='ffc1')
 		zz = DenseLayer(ffc1, 200, act=tf.nn.elu, name='zz')
@@ -77,7 +78,8 @@ def discriminator(x, is_train=True, reuse=False):
 		fc2 = DenseLayer(fc1, 128*8*8, act=tf.nn.elu, name='fc2')
 		fc2 = tf.reshape(fc2.outputs, (-1, 8, 8, 128))
 		fc2_input = InputLayer(fc2, name='inputs_fc2')
-		deconv1 = DeConv2d(fc2_input, 64, (4, 4), (nx/4, ny/4), (2, 2), name='deconv1')
+		"""
+		deconv1 = DeConv2d(ffc2, 64, (4, 4), (nx/4, ny/4), (2, 2), name='deconv1')
 		deconv2 = DeConv2d(deconv1, 32, (4, 4), (nx/2, ny/2), (2, 2), name='deconv2')
 		result = DeConv2d(deconv2, 1, (4, 4), (nx/1, ny/1),(2, 2), act=tf.nn.sigmoid, name='output')
 	
