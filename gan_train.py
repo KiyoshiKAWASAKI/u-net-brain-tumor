@@ -69,6 +69,8 @@ def main(task='all'):
     X_test = dataset.X_dev_input
     y_test = dataset.X_dev_target[:,:,:,np.newaxis]
 
+    print X_train
+
     if task == 'all':
         y_train = (y_train > 0).astype(int)
         y_test = (y_test > 0).astype(int)
@@ -85,13 +87,16 @@ def main(task='all'):
         exit("Unknow task %s" % task)
 
     ###======================== HYPER-PARAMETERS ============================###
-    batch_size = 4
+    batch_size = 10
     lr = 0.0001 
     # lr_decay = 0.5
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 50
-    print_freq_step = 100
+    print_freq_step = 50
+    kt = tf.Variable(0., trainable=False)
+    gamma = 0.75
+    lamda = 0.001
 
     ###======================== SHOW DATA ===================================###
     # show one slice
@@ -118,22 +123,43 @@ def main(task='all'):
             t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
-            ## train inference
+            
+            ## Training (using generator)
             net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
-            net_result = net.outputs
-            d_loss = model.discriminator(net_result, is_train=True, reuse = False)
+            net_result = net.outputs #[batch, 240, 240, 1]
+            
+            # Concat the  generated results with ground truth label
+            concated = tf.concat([t_seg, net_result], axis=3) # [10, 240, 240, 2]
+            real_target = tf.concat([t_seg, t_seg], axis=3)
+            # Send concated tensor into discriminator
+            d_out = model.discriminator(concated, is_train=True, reuse = False)
+            d_real = model.discriminator(real_target, is_train=True, reuse = False)
+            
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 
             ###======================== DEFINE LOSS =========================###
-            ## train losses for the generator
-            out_seg = net.outputs
+            ## Train losses for the generator
+            out_seg = net_result
             dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
             dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
-            ## Total loss
-            G_loss = dice_loss
-            D_loss = d_loss
+            
+            ## Train losses for the discriminator
+            recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
+            fake_iou_loss = tl.cost.iou_coe(d_out, concated, axis=[0,1,2,3])
+            fake_dice_hard = tl.cost.dice_hard_coe(d_out, concated, axis=[0,1,2,3])
+
+            real_dice_loss = 1 - tl.cost.dice_coe(d_real, real_target, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
+            real_iou_loss = tl.cost.iou_coe(d_real, real_target, axis=[0,1,2,3])
+            real_dice_hard = tl.cost.dice_hard_coe(d_real, real_target, axis=[0,1,2,3])
+
+            # Summary of G and D losses
+            G_loss = real_dice_loss
+            D_loss = real_dice_loss - kt * recons_loss
+            M = real_dice_loss+tf.abs(gamma * real_dice_loss - recons_loss)
+            k_update = kt.assign(kt + lamda * (gamma * real_dice_loss - recons_loss))
+
 
             ## test losses
             test_out_seg = net_test.outputs
@@ -142,11 +168,18 @@ def main(task='all'):
             test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=[0,1,2,3])
 
         ###======================== DEFINE TRAIN OPTS =======================###
-        t_vars = tl.layers.get_variables_with_name('u_net', True, True)
-        with tf.device('/gpu:3'):
+        g_vars = tl.layers.get_variables_with_name('u_net', True, True)
+        d_vars = tl.layers.get_variables_with_name('discriminator', True, True)
+        
+        with tf.device('/gpu:0'):
             with tf.variable_scope('learning_rate'):
                 lr_v = tf.Variable(lr, trainable=False)
-            train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(G_loss, var_list=t_vars)
+            g_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(G_loss, var_list=g_vars)
+
+        with tf.device('/gpu:0'):
+            with tf.variable_scope('learning_rate'):
+                lr_v = tf.Variable(lr, trainable=False)
+            d_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(D_loss, var_list=d_vars)
 
         ###======================== LOAD MODEL ==============================###
         tl.layers.initialize_global_variables(sess)
@@ -168,6 +201,7 @@ def main(task='all'):
         #     print(log)
 
         total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
+        
         for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
                                     batch_size=batch_size, shuffle=True):
             images, labels = batch
@@ -184,10 +218,18 @@ def main(task='all'):
             b_images.shape = (batch_size, nw, nh, nz)
 
             ## update network
-            _, _dice, _iou, _diceh, out = sess.run([train_op,
+            _, _dice, _iou, _diceh, out = sess.run([g_op,
                     dice_loss, iou_loss, dice_hard, net.outputs],
                     {t_image: b_images, t_seg: b_labels})
             total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+            
+            _, d_dice, d_iou, d_diceh, d_out = sess.run([d_op,
+                    dice_loss, iou_loss, dice_hard],
+                    {t_image: b_images, t_seg: b_labels})
+            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+
+            # update k
+
             n_batch += 1
 
             ## you can show the predition here:
