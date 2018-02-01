@@ -118,6 +118,7 @@ def main(task='all'):
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
         with tf.device('/gpu:2'): #<- remove it if you train on CPU or other GPU
             ###======================== DEFIINE MODEL =======================###
+            #tf.reset_default_graph()
             ## nz is 4 as we input all Flair, T1, T1c and T2.
             t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
             ## labels are either 0 or 1
@@ -137,7 +138,7 @@ def main(task='all'):
             
             # Send concated tensor into discriminator
             d_out = model.discriminator(concated, is_train=True, reuse = False)
-            d_real = model.discriminator(real_target, is_train=True, reuse = False)
+            d_real = model.discriminator(real_target, is_train=True, reuse = True)
             
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
@@ -159,7 +160,7 @@ def main(task='all'):
             real_dice_hard = tl.cost.dice_hard_coe(d_real, real_target, axis=[0,1,2,3])
 
             # Summary of G and D losses
-            G_loss = real_dice_loss
+            G_loss = recons_loss
             D_loss = real_dice_loss - kt * recons_loss
             M = real_dice_loss+tf.abs(gamma * real_dice_loss - recons_loss)
             k_update = kt.assign(kt + lamda * (gamma * real_dice_loss - recons_loss))
@@ -224,15 +225,21 @@ def main(task='all'):
             ## update network
             # Run generater and the evaluation
             _, _dice, _iou, _diceh, out, loss_G = sess.run([g_op,
-                    dice_loss, iou_loss, dice_hard, net.outputs],
+                    dice_loss, iou_loss, dice_hard, net.outputs, G_loss],
                     {t_image: b_images, t_seg: b_labels})
             #total_dice_g += _dice; total_iou_g += _iou; total_dice_hard_g += _diceh
             
             # Run discriminator and the evaluation
-            _, d_dice, d_iou, d_diceh, d_out, loss_D = sess.run([d_op,
-                   recons_loss, fake_iou_loss, fake_dice_hard,
-                   real_dice_loss, real_dice_hard,real_iou_loss],
-                    {t_image: b_images, t_seg: b_labels})
+            """
+            _, 
+            _recons_dice, _recons_iou, _recons_diceh,
+            _real_d_loss, _real_d_hard, _real_iou, loss_D = sess.run([d_op,
+                            recons_loss, fake_iou_loss, fake_dice_hard,
+                            real_dice_loss, real_dice_hard,real_iou_loss, D_loss],
+                            {t_image: b_images, t_seg: b_labels})
+            """
+            _, loss_D = sess.run([d_op, D_loss],
+                            {t_image: b_images, t_seg: b_labels})
             #total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
 
             # update k
@@ -253,8 +260,8 @@ def main(task='all'):
                 print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs"
                 % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
 
-                print("G loss is %f; D loss is %f"
-                % (loss_G, loss_D))
+                print("Currenct G loss is %f; D loss is %f; M is %f; kt is %f"
+                % (loss_G, loss_D, M, kt))
 
             ## check model fail
             if np.isnan(_dice):

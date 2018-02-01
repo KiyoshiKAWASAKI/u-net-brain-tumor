@@ -57,75 +57,77 @@ def u_net(x, is_train=False, reuse=False, n_out=1):
 	return conv1
 
 # Define discriminator (use auto encoder)
-def discriminator(inputs, is_train=True, reuse=False):
+"""
+def discriminator(inputs, is_train=True, reuse=None):
 	n_filter = 32
 	_, nx, ny, nz = inputs.get_shape().as_list()
 	w_init = tf.random_normal_initializer(stddev=0.02)
 
 	with tf.variable_scope("discriminator", reuse=reuse):
 		tl.layers.set_name_reuse(reuse)
-		d_input = InputLayer(inputs, name='d_input') # [10, 240, 240, 2]
+		d_inputs = InputLayer(inputs, name='d_input') # [10, 240, 240, 2]
 
 		# Encoder
-		conv0 = Conv2d(d_input, n_filter, 
+		conv0 = Conv2d(d_inputs, n_filter, 
 						(3, 3), (2, 2), 
 						act=tf.nn.elu,
                         padding='SAME', 
                         W_init=w_init, 
-                        name='conv0') # (nx/2,ny/2,n)
+                        name='conv0_0') # (nx/2,ny/2,n)
 
-		conv1 = Conv2d(net_conv0, 2*n_filter, 
+		conv1 = Conv2d(conv0, 2*n_filter, 
 						(3, 3), (2, 2), 
 						act=tf.nn.elu,
                         padding='SAME', 
                         W_init=w_init, 
-                        name='conv1') # (nx/4,ny/4,2*n)
+                        name='conv1_0') # (nx/4,ny/4,2*n)
 		
-		conv2 = Conv2d(net_conv1, 4*n_filter, 
+		conv2 = Conv2d(conv1, 4*n_filter, 
 						(3, 3), (2, 2), 
 						act=tf.nn.elu,
                         padding='SAME', 
                         W_init=w_init, 
-                        name='conv2') # (nx/8,ny/8,4*n)
+                        name='conv2_0') # (nx/8,ny/8,4*n)
+		# Decoder
+        net_deconv2 = DeConv2d(conv2, 2*n_filter, (3, 3), (nx/4, ny/4), (2, 2), name='deconv2_0')
+        net_deconv1 = DeConv2d(net_deconv2, n_filter, (3, 3), (nx/2, ny/2), (2, 2), name='deconv1_0')
+        net_deconv0 = DeConv2d(net_deconv1, nz, (3, 3), (nx, ny), (2, 2), act=tf.nn.sigmoid, name='deconv0_0')
+
+	return net_deconv0.outputs
+"""
+
+def discriminator(inputs, is_train=True, reuse=False):
+    n_filter = 32
+    _, nx, ny, nz = inputs.get_shape().as_list()
+    print("nx, ny, nz : ", nx, ny, nz)
+    # c_dim = FLAGS.x_dim + FLAGS.y_dim # two gray-scale image, 2
+    # batch_size = FLAGS.batch_size
+    # print("D batch size:{}".format(batch_size))
+    w_init = tf.random_normal_initializer(stddev=0.02)
+    # gamma_init = tf.random_normal_initializer(1., 0.02) # for BNLayer
+    with tf.variable_scope("discriminator", reuse=reuse):
+        tl.layers.set_name_reuse(reuse)
+
+        net_in = InputLayer(inputs, name='in') # (512,512,2)
+
+        # Encoder
+        net_conv0 = Conv2d(net_in, n_filter, (3, 3), (2, 2), act=tf.nn.elu,
+                        padding='SAME', W_init=w_init, name='conv0') # (nx/2,ny/2,n)
+
+        net_conv1 = Conv2d(net_conv0, 2*n_filter, (3, 3), (2, 2), act=tf.nn.elu,
+                           padding='SAME', W_init=w_init, name='conv1') # (nx/4,ny/4,2*n)
+
+        net_conv2 = Conv2d(net_conv1, 4*n_filter, (3, 3), (2, 2), act=tf.nn.elu,
+                           padding='SAME', W_init=w_init, name='conv2') # (nx/8,ny/8,4*n)
+
+        print("net_conv2 shape:", net_conv2.outputs.get_shape())
+
+        # net_flat2 = FlattenLayer(net_conv2, name='flatten2')
+        # net_dense = DenseLayer(net_flat2, )
 
         # Decoder
-        deconv2 = DeConv2d(conv2, 2*n_filter, (3, 3), (nx/4, ny/4), (2, 2), name='deconv2')
-        deconv1 = DeConv2d(net_deconv2, n_filter, (3, 3), (nx/2, ny/2), (2, 2), name='deconv1')
-        deconv0 = DeConv2d(net_deconv1, nz, (3, 3), (nx, ny), (2, 2), act=tf.nn.sigmoid, name='deconv0')
+        net_deconv2 = DeConv2d(net_conv2, 2*n_filter, (3, 3), (nx/4, ny/4), (2, 2), name='deconv2')
+        net_deconv1 = DeConv2d(net_deconv2, n_filter, (3, 3), (nx/2, ny/2), (2, 2), name='deconv1')
+        net_deconv0 = DeConv2d(net_deconv1, nz, (3, 3), (nx, ny), (2, 2), name='deconv0')
 
-	return deconv0.outputs
-
-"""
-def discriminator(x, is_train=True, reuse=False):
-	with tf.variable_scope("discriminator", reuse=reuse):
-		tl.layers.set_name_reuse(reuse)
-		nx = ny = 240
-
-		# Input size: [10,240,240,1]
-		inputs = x
-		inputs = inputs + tf.random_normal(shape=tf.shape(x), mean=0.0, stddev=0.01)
-		inputs = tf.reshape(inputs, (-1, 240, 240, 1))
-		inputs = InputLayer(inputs, name='inputs')
-
-		conv1 = Conv2d(inputs, 32, (4, 4), act=tf.nn.elu, name='conv1')
-		conv2 = Conv2d(conv1, 64, (4, 4), act=tf.nn.elu, name='conv2')
-		ffc2 = Conv2d(conv2, 128, (4, 4), act=tf.nn.elu, name='ffc2')
-		
-		ffc1 = FlattenLayer(ffc2, name='flatten_layer')
-		ffc1 = DenseLayer(ffc1, 512, act=tf.nn.elu, name='ffc1')
-		zz = DenseLayer(ffc1, 200, act=tf.nn.elu, name='zz')
-		fc1 = DenseLayer(zz, 512, act=tf.nn.elu, name='fc1')
-		fc2 = DenseLayer(fc1, 128*8*8, act=tf.nn.elu, name='fc2')
-		fc2 = tf.reshape(fc2.outputs, (-1, 8, 8, 128))
-		fc2_input = InputLayer(fc2, name='inputs_fc2')
-		
-		deconv1 = DeConv2d(ffc2, 64, (4, 4), (nx/4, ny/4), (2, 2), name='deconv1')
-		deconv2 = DeConv2d(deconv1, 32, (4, 4), (nx/2, ny/2), (2, 2), name='deconv2')
-		result = DeConv2d(deconv2, 1, (4, 4), (nx/1, ny/1),(2, 2), act=tf.nn.sigmoid, name='output')
-	
-	resid = tf.abs(x - result.outputs)
-	loss=tf.reduce_mean(resid)
-
-	return loss
-"""
-
+    return net_deconv0.outputs
