@@ -261,7 +261,7 @@ def main(task='all'):
                 % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
 
                 print("Currenct G loss is %f; D loss is %f; M is %f; kt is %f"
-                % (loss_G, loss_D, M, kt))
+                % (loss_G, loss_D, M, kt_for_print))
 
             ## check model fail
             if np.isnan(_dice):
