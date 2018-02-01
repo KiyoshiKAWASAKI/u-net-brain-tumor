@@ -69,7 +69,6 @@ def main(task='all'):
     X_test = dataset.X_dev_input
     y_test = dataset.X_dev_target[:,:,:,np.newaxis]
 
-    print X_train
 
     if task == 'all':
         y_train = (y_train > 0).astype(int)
@@ -123,14 +122,19 @@ def main(task='all'):
             t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
+
+            # Inputs for the 
             
             ## Training (using generator)
             net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
             net_result = net.outputs #[batch, 240, 240, 1]
             
             # Concat the  generated results with ground truth label
-            concated = tf.concat([t_seg, net_result], axis=3) # [10, 240, 240, 2]
-            real_target = tf.concat([t_seg, t_seg], axis=3)
+            #concated = tf.concat([t_seg, net_result], axis=3) # [10, 240, 240, 2]
+            concated = tf.concat([t_image, net_result], axis=3) # [10, 240, 240, 5]
+            #real_target = tf.concat([t_seg, t_seg], axis=3)
+            real_target = tf.concat([t_image, t_seg], axis=3) # [10, 240, 240, 5]
+            
             # Send concated tensor into discriminator
             d_out = model.discriminator(concated, is_train=True, reuse = False)
             d_real = model.discriminator(real_target, is_train=True, reuse = False)
@@ -218,17 +222,22 @@ def main(task='all'):
             b_images.shape = (batch_size, nw, nh, nz)
 
             ## update network
-            _, _dice, _iou, _diceh, out = sess.run([g_op,
+            # Run generater and the evaluation
+            _, _dice, _iou, _diceh, out, loss_G = sess.run([g_op,
                     dice_loss, iou_loss, dice_hard, net.outputs],
                     {t_image: b_images, t_seg: b_labels})
-            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+            #total_dice_g += _dice; total_iou_g += _iou; total_dice_hard_g += _diceh
             
-            _, d_dice, d_iou, d_diceh, d_out = sess.run([d_op,
-                    dice_loss, iou_loss, dice_hard],
+            # Run discriminator and the evaluation
+            _, d_dice, d_iou, d_diceh, d_out, loss_D = sess.run([d_op,
+                   recons_loss, fake_iou_loss, fake_dice_hard,
+                   real_dice_loss, real_dice_hard,real_iou_loss],
                     {t_image: b_images, t_seg: b_labels})
-            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+            #total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
 
             # update k
+            _, convergence_metric, kt_for_print = sess.run([k_update, M, kt], 
+                                                feed_dict={t_image: b_images, t_seg: b_labels})
 
             n_batch += 1
 
@@ -241,8 +250,11 @@ def main(task='all'):
             #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
 
             if n_batch % print_freq_step == 0:
-                print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)"
+                print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs"
                 % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
+
+                print("G loss is %f; D loss is %f"
+                % (loss_G, loss_D))
 
             ## check model fail
             if np.isnan(_dice):

@@ -67,7 +67,7 @@ def discriminator(inputs, is_train=True, reuse=False):
 		d_input = InputLayer(inputs, name='d_input') # [10, 240, 240, 2]
 
 		# Encoder
-		conv0 = Conv2d(net_in, n_filter, 
+		conv0 = Conv2d(d_input, n_filter, 
 						(3, 3), (2, 2), 
 						act=tf.nn.elu,
                         padding='SAME', 
@@ -93,7 +93,7 @@ def discriminator(inputs, is_train=True, reuse=False):
         deconv1 = DeConv2d(net_deconv2, n_filter, (3, 3), (nx/2, ny/2), (2, 2), name='deconv1')
         deconv0 = DeConv2d(net_deconv1, nz, (3, 3), (nx, ny), (2, 2), act=tf.nn.sigmoid, name='deconv0')
 
-    return deconv0.outputs
+	return deconv0.outputs
 
 """
 def discriminator(x, is_train=True, reuse=False):
