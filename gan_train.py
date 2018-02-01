@@ -260,8 +260,8 @@ def main(task='all'):
                 print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs"
                 % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
 
-                print("Currenct G loss is %f; D loss is %f; M is %f; kt is %f"
-                % (loss_G, loss_D, M, kt_for_print))
+                print("Currenct G loss is %f; D loss is %f"
+                % (loss_G, loss_D))
 
             ## check model fail
             if np.isnan(_dice):
