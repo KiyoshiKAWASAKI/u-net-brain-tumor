@@ -220,7 +220,7 @@ def main(task='all'):
                     {t_image: b_images, t_seg: b_labels})
             total_dice_g += _dice; total_iou_g += _iou; total_dice_hard_g += _diceh
             """
-            _, loss_G = sess.run([g_op, G_loss],
+            _, loss_G, out = sess.run([g_op, G_loss, net.outputs],
                             {t_image: b_images, t_seg: b_labels})
             
             # Run discriminator and the evaluation
