@@ -252,7 +252,9 @@ def main(task='all'):
                 % (loss_G, loss_D, convergence_metric, kt_for_print))
 
             ## check model fail
-            if np.isnan(_dice):
+            if np.isnan(loss_G):
+                exit(" ** NaN loss found during training, stop training")
+            if np.isnan(loss_D):
                 exit(" ** NaN loss found during training, stop training")
             if np.isnan(out).any():
                 exit(" ** NaN found in output images during training, stop training")
