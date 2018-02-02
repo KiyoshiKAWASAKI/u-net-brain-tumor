@@ -92,7 +92,7 @@ def main(task='all'):
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 50
-    print_freq_step = 50
+    print_freq_step = 1
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
@@ -145,10 +145,12 @@ def main(task='all'):
 
             ###======================== DEFINE LOSS =========================###
             ## Train losses for the generator
+            """
             out_seg = net_result
             dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
             dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
+            """
             
             ## Train losses for the discriminator
             recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
@@ -164,7 +166,6 @@ def main(task='all'):
             D_loss = real_dice_loss - kt * recons_loss
             M = real_dice_loss+tf.abs(gamma * real_dice_loss - recons_loss)
             k_update = kt.assign(kt + lamda * (gamma * real_dice_loss - recons_loss))
-
 
             ## test losses
             test_out_seg = net_test.outputs
@@ -194,17 +195,6 @@ def main(task='all'):
         ###======================== TRAINING ================================###
     for epoch in range(0, n_epoch+1):
         epoch_time = time.time()
-        ## update decay learning rate at the beginning of a epoch
-        # if epoch !=0 and (epoch % decay_every == 0):
-        #     new_lr_decay = lr_decay ** (epoch // decay_every)
-        #     sess.run(tf.assign(lr_v, lr * new_lr_decay))
-        #     log = " ** new learning rate: %f" % (lr * new_lr_decay)
-        #     print(log)
-        # elif epoch == 0:
-        #     sess.run(tf.assign(lr_v, lr))
-        #     log = " ** init lr: %f  decay_every_epoch: %d, lr_decay: %f" % (lr, decay_every, lr_decay)
-        #     print(log)
-
         total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
         
         for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
@@ -223,24 +213,20 @@ def main(task='all'):
             b_images.shape = (batch_size, nw, nh, nz)
 
             ## update network
-            # Run generater and the evaluation
+            # Run generater and the
+            """
             _, _dice, _iou, _diceh, out, loss_G = sess.run([g_op,
                     dice_loss, iou_loss, dice_hard, net.outputs, G_loss],
                     {t_image: b_images, t_seg: b_labels})
-            #total_dice_g += _dice; total_iou_g += _iou; total_dice_hard_g += _diceh
+            total_dice_g += _dice; total_iou_g += _iou; total_dice_hard_g += _diceh
+            """
+            _, loss_G = sess.run([g_op, G_loss],
+                            {t_image: b_images, t_seg: b_labels})
             
             # Run discriminator and the evaluation
-            """
-            _, 
-            _recons_dice, _recons_iou, _recons_diceh,
-            _real_d_loss, _real_d_hard, _real_iou, loss_D = sess.run([d_op,
-                            recons_loss, fake_iou_loss, fake_dice_hard,
-                            real_dice_loss, real_dice_hard,real_iou_loss, D_loss],
-                            {t_image: b_images, t_seg: b_labels})
-            """
+          
             _, loss_D = sess.run([d_op, D_loss],
                             {t_image: b_images, t_seg: b_labels})
-            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
 
             # update k
             _, convergence_metric, kt_for_print = sess.run([k_update, M, kt], 
@@ -257,8 +243,10 @@ def main(task='all'):
             #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
 
             if n_batch % print_freq_step == 0:
+                """
                 print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs"
                 % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
+                """
 
                 print("Currenct G loss is %f; D loss is %f; M is %f; kt is %f"
                 % (loss_G, loss_D, convergence_metric, kt_for_print))
@@ -269,8 +257,9 @@ def main(task='all'):
             if np.isnan(out).any():
                 exit(" ** NaN found in output images during training, stop training")
 
-        print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
-                (epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
+        #print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
+                #(epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
+
 
         ## save a predition of training set
         for i in range(batch_size):
@@ -291,7 +280,7 @@ def main(task='all'):
             total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
             n_batch += 1
 
-        print(" **"+" "*17+"test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
+        print("Evaluation:"+" "*17+"test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
                 (total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch))
         print(" task: {}".format(task))
         ## save a predition of test set
