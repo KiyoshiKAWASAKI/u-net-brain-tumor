@@ -240,7 +240,7 @@ def main(task='all'):
             """
             _, loss_D = sess.run([d_op, D_loss],
                             {t_image: b_images, t_seg: b_labels})
-            #total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
+            total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
 
             # update k
             _, convergence_metric, kt_for_print = sess.run([k_update, M, kt], 
@@ -260,8 +260,8 @@ def main(task='all'):
                 print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs"
                 % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
 
-                print("Currenct G loss is %f; D loss is %f"
-                % (loss_G, loss_D))
+                print("Currenct G loss is %f; D loss is %f; M is %f; kt is %f"
+                % (loss_G, loss_D, convergence_metric, kt_for_print))
 
             ## check model fail
             if np.isnan(_dice):
