@@ -92,7 +92,7 @@ def main(task='all'):
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 50
-    print_freq_step = 1
+    print_freq_step = 10
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
@@ -214,19 +214,16 @@ def main(task='all'):
 
             ## update network
             # Run generater and the
-            """
-            _, _dice, _iou, _diceh, out, loss_G = sess.run([g_op,
-                    dice_loss, iou_loss, dice_hard, net.outputs, G_loss],
-                    {t_image: b_images, t_seg: b_labels})
-            total_dice_g += _dice; total_iou_g += _iou; total_dice_hard_g += _diceh
-            """
-            _, loss_G, out = sess.run([g_op, G_loss, net.outputs],
-                            {t_image: b_images, t_seg: b_labels})
+            _, loss_G, _fakeiou,
+            _fakediceh, out = sess.run([g_op, G_loss, fake_iou_loss,
+                                    fake_dice_hard,net.outputs],
+                                    {t_image: b_images, t_seg: b_labels})
             
             # Run discriminator and the evaluation
-          
-            _, loss_D = sess.run([d_op, D_loss],
-                            {t_image: b_images, t_seg: b_labels})
+            _, loss_D, _realdice,
+            _realiou, _realdiceh = sess.run([d_op, D_loss, real_dice_loss,
+                                real_iou_loss, real_dice_hard],
+                                {t_image: b_images, t_seg: b_labels})
 
             # update k
             _, convergence_metric, kt_for_print = sess.run([k_update, M, kt], 
@@ -243,13 +240,13 @@ def main(task='all'):
             #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
 
             if n_batch % print_freq_step == 0:
-                """
-                print("Epoch %d step %d 1-dice: %f hard-dice: %f iou: %f took %fs"
-                % (epoch, n_batch, _dice, _diceh, _iou, time.time()-step_time))
-                """
 
-                print("Currenct G loss is %f; D loss is %f; M is %f; kt is %f"
-                % (loss_G, loss_D, convergence_metric, kt_for_print))
+                print("Epoch %d step %d. G loss: %f; D loss: %f; M is%f; kt is %f"
+                % (epoch, n_batch, loss_G, loss_D, convergence_metric, kt_for_print))
+                print("Fake dice-hard: %f; Fake IOU: %f"
+                % (_fakediceh, _fakeiou))
+                print("Real dice-hard: %f; Real IOU: %f"
+                % (_realdiceh, _realiou))
 
             ## check model fail
             if np.isnan(loss_G):
