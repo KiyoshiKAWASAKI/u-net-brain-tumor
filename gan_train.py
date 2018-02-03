@@ -242,9 +242,9 @@ def main(task='all'):
                 % (_realdiceh, _realiou))
 
             ## check model fail
-            if np.isnan(_loss_G):
+            if np.isnan(_lossG):
                 exit(" ** NaN loss found during training, stop training")
-            if np.isnan(_loss_D):
+            if np.isnan(_lossD):
                 exit(" ** NaN loss found during training, stop training")
             if np.isnan(out).any():
                 exit(" ** NaN found in output images during training, stop training")
