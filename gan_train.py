@@ -206,7 +206,7 @@ def main(task='all'):
 
             ## update network
             # Run generater
-            _, _fakedice, _fakeiou,
+            _, _fakedice, _fakeiou, \
             _fakediceh, out = sess.run([g_op, recons_loss, fake_iou_loss,
                                     fake_dice_hard,net.outputs],
                                     {t_image: b_images, t_seg: b_labels})
@@ -215,7 +215,7 @@ def main(task='all'):
             total_dice_hard_fake += _fakediceh
             
             # Run discriminator
-            _, _realdice,
+            _, _realdice, \
             _realiou, _realdiceh = sess.run([d_op, real_dice_loss,
                                 real_iou_loss, real_dice_hard],
                                 {t_image: b_images, t_seg: b_labels})
