@@ -92,7 +92,7 @@ def main(task='all'):
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 50
-    print_freq_step = 10
+    print_freq_step = 1
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
