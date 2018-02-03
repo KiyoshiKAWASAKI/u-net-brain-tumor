@@ -185,7 +185,9 @@ def main(task='all'):
         ###======================== TRAINING ================================###
     for epoch in range(0, n_epoch+1):
         epoch_time = time.time()
-        total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
+        n_batch = 0
+        total_dice_fake, total_iou_fake, total_dice_hard_fake = 0, 0, 0
+        total_dice_real, total_iou_real, total_dice_hard_real = 0, 0, 0
         
         for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
                                     batch_size=batch_size, shuffle=True):
@@ -204,24 +206,33 @@ def main(task='all'):
 
             ## update network
             # Run generater
-            _, _fakeiou,
-            _fakediceh, out = sess.run([g_op, fake_iou_loss,
+            _, _fakedice, _fakeiou,
+            _fakediceh, out = sess.run([g_op, recons_loss, fake_iou_loss,
                                     fake_dice_hard,net.outputs],
                                     {t_image: b_images, t_seg: b_labels})
-            _, loss_G = sess.run([g_op, G_loss],
-                                {t_image: b_images, t_seg: b_labels})
+            total_dice_fake += _fakedice
+            total_iou_fake += _fakeiou
+            total_dice_hard_fake += _fakediceh
             
             # Run discriminator
             _, _realdice,
             _realiou, _realdiceh = sess.run([d_op, real_dice_loss,
                                 real_iou_loss, real_dice_hard],
                                 {t_image: b_images, t_seg: b_labels})
-            _, loss_D = sess.run([g_op, D_loss],
-                                {t_image: b_images, t_seg: b_labels})
+            total_dice_real += _realdice
+            total_iou_real += _realiou
+            total_dice_hard_real += _realdiceh
 
-            # update k
+
+            # update k and losses
             _, convergence_metric, kt_for_print = sess.run([k_update, M, kt], 
                                                 feed_dict={t_image: b_images, t_seg: b_labels})
+
+            _, loss_G = sess.run([g_op, G_loss],
+                                {t_image: b_images, t_seg: b_labels})
+
+            _, loss_D = sess.run([g_op, D_loss],
+                                {t_image: b_images, t_seg: b_labels})
 
             n_batch += 1
 
