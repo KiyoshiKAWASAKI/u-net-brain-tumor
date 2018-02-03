@@ -86,7 +86,7 @@ def main(task='all'):
         exit("Unknow task %s" % task)
 
     ###======================== HYPER-PARAMETERS ============================###
-    batch_size = 10
+    batch_size = 4
     lr = 0.0001 
     # lr_decay = 0.5
     # decay_every = 100
@@ -123,8 +123,6 @@ def main(task='all'):
             t_image = tf.placeholder('float32', [batch_size, nw, nh, nz], name='input_image')
             ## labels are either 0 or 1
             t_seg = tf.placeholder('float32', [batch_size, nw, nh, 1], name='target_segment')
-
-            # Inputs for the 
             
             ## Training (using generator)
             net = model.u_net(t_image, is_train=True, reuse=False, n_out=1)
@@ -139,20 +137,15 @@ def main(task='all'):
             # Send concated tensor into discriminator
             d_out = model.discriminator(concated, is_train=True, reuse = False)
             d_real = model.discriminator(real_target, is_train=True, reuse = True)
+
+            fake_out = d_out.outputs
+            real_out = d_real.outputs
             
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
 
             ###======================== DEFINE LOSS =========================###
-            ## Train losses for the generator
-            """
-            out_seg = net_result
-            dice_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
-            iou_loss = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
-            dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
-            """
-            
-            ## Train losses for the discriminator
+            ## Train losses
             recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             fake_iou_loss = tl.cost.iou_coe(d_out, concated, axis=[0,1,2,3])
             fake_dice_hard = tl.cost.dice_hard_coe(d_out, concated, axis=[0,1,2,3])
@@ -213,14 +206,14 @@ def main(task='all'):
             b_images.shape = (batch_size, nw, nh, nz)
 
             ## update network
-            # Run generater and the
-            _, loss_G, _fakeiou,
+            # Run generater
+            _, _lossG, _fakeiou,
             _fakediceh, out = sess.run([g_op, G_loss, fake_iou_loss,
                                     fake_dice_hard,net.outputs],
                                     {t_image: b_images, t_seg: b_labels})
             
-            # Run discriminator and the evaluation
-            _, loss_D, _realdice,
+            # Run discriminator
+            _, _lossD, _realdice,
             _realiou, _realdiceh = sess.run([d_op, D_loss, real_dice_loss,
                                 real_iou_loss, real_dice_hard],
                                 {t_image: b_images, t_seg: b_labels})
@@ -242,16 +235,16 @@ def main(task='all'):
             if n_batch % print_freq_step == 0:
 
                 print("Epoch %d step %d. G loss: %f; D loss: %f; M is%f; kt is %f"
-                % (epoch, n_batch, loss_G, loss_D, convergence_metric, kt_for_print))
+                % (epoch, n_batch, _lossG, _lossD, convergence_metric, kt_for_print))
                 print("Fake dice-hard: %f; Fake IOU: %f"
                 % (_fakediceh, _fakeiou))
                 print("Real dice-hard: %f; Real IOU: %f"
                 % (_realdiceh, _realiou))
 
             ## check model fail
-            if np.isnan(loss_G):
+            if np.isnan(_loss_G):
                 exit(" ** NaN loss found during training, stop training")
-            if np.isnan(loss_D):
+            if np.isnan(_loss_D):
                 exit(" ** NaN loss found during training, stop training")
             if np.isnan(out).any():
                 exit(" ** NaN found in output images during training, stop training")
