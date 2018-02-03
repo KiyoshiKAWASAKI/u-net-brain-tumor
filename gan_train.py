@@ -137,9 +137,6 @@ def main(task='all'):
             # Send concated tensor into discriminator
             d_out = model.discriminator(concated, is_train=True, reuse = False)
             d_real = model.discriminator(real_target, is_train=True, reuse = True)
-
-            fake_out = d_out.outputs
-            real_out = d_real.outputs
             
             ## test inference
             net_test = model.u_net(t_image, is_train=False, reuse=True, n_out=1)
@@ -207,15 +204,19 @@ def main(task='all'):
 
             ## update network
             # Run generater
-            _, _lossG, _fakeiou,
-            _fakediceh, out = sess.run([g_op, G_loss, fake_iou_loss,
+            _, _fakeiou,
+            _fakediceh, out = sess.run([g_op, fake_iou_loss,
                                     fake_dice_hard,net.outputs],
                                     {t_image: b_images, t_seg: b_labels})
+            _, loss_G = sess.run([g_op, G_loss],
+                                {t_image: b_images, t_seg: b_labels})
             
             # Run discriminator
-            _, _lossD, _realdice,
-            _realiou, _realdiceh = sess.run([d_op, D_loss, real_dice_loss,
+            _, _realdice,
+            _realiou, _realdiceh = sess.run([d_op, real_dice_loss,
                                 real_iou_loss, real_dice_hard],
+                                {t_image: b_images, t_seg: b_labels})
+            _, loss_D = sess.run([g_op, D_loss],
                                 {t_image: b_images, t_seg: b_labels})
 
             # update k
@@ -235,16 +236,16 @@ def main(task='all'):
             if n_batch % print_freq_step == 0:
 
                 print("Epoch %d step %d. G loss: %f; D loss: %f; M is%f; kt is %f"
-                % (epoch, n_batch, _lossG, _lossD, convergence_metric, kt_for_print))
+                % (epoch, n_batch, loss_G, loss_D, convergence_metric, kt_for_print))
                 print("Fake dice-hard: %f; Fake IOU: %f"
                 % (_fakediceh, _fakeiou))
                 print("Real dice-hard: %f; Real IOU: %f"
                 % (_realdiceh, _realiou))
 
             ## check model fail
-            if np.isnan(_lossG):
+            if np.isnan(loss_G):
                 exit(" ** NaN loss found during training, stop training")
-            if np.isnan(_lossD):
+            if np.isnan(loss_D):
                 exit(" ** NaN loss found during training, stop training")
             if np.isnan(out).any():
                 exit(" ** NaN found in output images during training, stop training")
