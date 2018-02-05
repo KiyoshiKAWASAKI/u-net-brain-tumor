@@ -92,7 +92,7 @@ def main(task='all'):
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 25
-    print_freq_step = 50
+    print_freq_step = 100
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
@@ -146,6 +146,7 @@ def main(task='all'):
             out_seg = net_result
             train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
             train_dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
+            train_loss = 1 - train_dice_hard
 
             recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             fake_iou_loss = tl.cost.iou_coe(d_out, concated, axis=[0,1,2,3])
@@ -174,6 +175,11 @@ def main(task='all'):
         with tf.device('/gpu:0'):
             with tf.variable_scope('learning_rate'):
                 lr_v = tf.Variable(lr, trainable=False)
+            train_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(train_loss, var_list=g_vars)
+
+        with tf.device('/gpu:0'):
+            with tf.variable_scope('learning_rate'):
+                lr_v = tf.Variable(lr, trainable=False)
             g_op = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(G_loss, var_list=g_vars)
 
         with tf.device('/gpu:0'):
@@ -192,6 +198,7 @@ def main(task='all'):
         n_batch = 0
         total_dice_fake, total_iou_fake, total_dice_hard_fake = 0, 0, 0
         total_dice_real, total_iou_real, total_dice_hard_real = 0, 0, 0
+        dice_train, iou_train = 0, 0
         
         for batch in tl.iterate.minibatches(inputs=X_train, targets=y_train,
                                     batch_size=batch_size, shuffle=True):
@@ -209,12 +216,16 @@ def main(task='all'):
             b_images.shape = (batch_size, nw, nh, nz)
 
             ## update network
+            _, _train_dice, _train_iou = sess.run(
+                                    [train_op, train_dice_hard, train_iou],
+                                    {t_image: b_images, t_seg: b_labels})
+            dice_train += _train_dice
+            iou_train += _train_iou
+
             # Run generater
 
-            _, _train_iou, _train_dice, \
-            _fakedice, _fakeiou, \
-            _fakediceh, out = sess.run([g_op, train_iou, train_dice_hard, 
-                                    recons_loss, fake_iou_loss,
+            _, _fakedice, _fakeiou, \
+            _fakediceh, out = sess.run([g_op, recons_loss, fake_iou_loss,
                                     fake_dice_hard,net.outputs],
                                     {t_image: b_images, t_seg: b_labels})
             total_dice_fake += _fakedice
@@ -245,12 +256,12 @@ def main(task='all'):
 
             if n_batch % print_freq_step == 0:
 
-                print("Epoch %d step %d. G loss: %f; D loss: %f; M is%f; kt is %f"
+                print("Epoch %d step %d. G loss: %f; D loss: %f; M is %f; kt is %f"
                 % (epoch, n_batch, loss_G, loss_D, convergence_metric, kt_for_print))
                 print("Fake dice-hard: %f; Fake IOU: %f"
-                % (_fakediceh/n_batch, _fakeiou/n_batch))
+                % (total_dice_fake/n_batch, total_iou_fake/n_batch))
                 print("Real dice-hard: %f; Real IOU: %f"
-                % (_realdiceh/n_batch, _realiou/n_batch))
+                % (total_dice_real/n_batch, total_iou_real/n_batch))
 
             ## check model fail
             if np.isnan(loss_G):
@@ -262,8 +273,10 @@ def main(task='all'):
 
         #print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
                 #(epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
+        
+
         print(("Train dice: %f. Train IOU: %f") 
-            % (_train_dice/n_batch, _train_iou/n_batch))
+            % (dice_train/n_batch, iou_train/n_batch))
 
         ## save a predition of training set
         for i in range(batch_size):
@@ -284,7 +297,7 @@ def main(task='all'):
             total_dice += _dice; total_iou += _iou; total_dice_hard += _diceh
             n_batch += 1
 
-        print("Evaluation:"+" "*17+"test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
+        print("Test 1-dice: %f hard-dice: %f iou: %f (2d no distortion)" %
                 (total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch))
         print(" task: {}".format(task))
         ## save a predition of test set

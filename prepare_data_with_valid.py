@@ -19,7 +19,7 @@ core: 1 4
 enhance: 4
 """
 ###============================= SETTINGS ===================================###
-DATA_SIZE = 'small' # (small, half or all)
+DATA_SIZE = 'half' # (small, half or all)
 
 save_dir = "../../data/train_dev_all/"
 if not os.path.exists(save_dir):
