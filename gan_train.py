@@ -86,13 +86,13 @@ def main(task='all'):
         exit("Unknow task %s" % task)
 
     ###======================== HYPER-PARAMETERS ============================###
-    batch_size = 4
+    batch_size = 10
     lr = 0.0001 
     # lr_decay = 0.5
     # decay_every = 100
     beta1 = 0.9
-    n_epoch = 50
-    print_freq_step = 20
+    n_epoch = 25
+    print_freq_step = 50
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
@@ -143,6 +143,10 @@ def main(task='all'):
 
             ###======================== DEFINE LOSS =========================###
             ## Train losses
+            out_seg = net_result
+            train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
+            train_dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
+
             recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             fake_iou_loss = tl.cost.iou_coe(d_out, concated, axis=[0,1,2,3])
             fake_dice_hard = tl.cost.dice_hard_coe(d_out, concated, axis=[0,1,2,3])
@@ -206,8 +210,11 @@ def main(task='all'):
 
             ## update network
             # Run generater
-            _, _fakedice, _fakeiou, \
-            _fakediceh, out = sess.run([g_op, recons_loss, fake_iou_loss,
+
+            _, _train_iou, _train_dice, \
+            _fakedice, _fakeiou, \
+            _fakediceh, out = sess.run([g_op, train_iou, train_dice_hard, 
+                                    recons_loss, fake_iou_loss,
                                     fake_dice_hard,net.outputs],
                                     {t_image: b_images, t_seg: b_labels})
             total_dice_fake += _fakedice
@@ -236,22 +243,14 @@ def main(task='all'):
 
             n_batch += 1
 
-            ## you can show the predition here:
-            # vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_tmp.png".format(task))
-            # exit()
-
-            # if _dice == 1: # DEBUG
-            #     print("DEBUG")
-            #     vis_imgs2(b_images[0], b_labels[0], out[0], "samples/{}/_debug.png".format(task))
-
             if n_batch % print_freq_step == 0:
 
                 print("Epoch %d step %d. G loss: %f; D loss: %f; M is%f; kt is %f"
                 % (epoch, n_batch, loss_G, loss_D, convergence_metric, kt_for_print))
                 print("Fake dice-hard: %f; Fake IOU: %f"
-                % (_fakediceh, _fakeiou))
+                % (_fakediceh/n_batch, _fakeiou/n_batch))
                 print("Real dice-hard: %f; Real IOU: %f"
-                % (_realdiceh, _realiou))
+                % (_realdiceh/n_batch, _realiou/n_batch))
 
             ## check model fail
             if np.isnan(loss_G):
@@ -263,7 +262,8 @@ def main(task='all'):
 
         #print(" ** Epoch [%d/%d] train 1-dice: %f hard-dice: %f iou: %f took %fs (2d with distortion)" %
                 #(epoch, n_epoch, total_dice/n_batch, total_dice_hard/n_batch, total_iou/n_batch, time.time()-epoch_time))
-
+        print(("Train dice: %f. Train IOU: %f") 
+            % (_train_dice/n_batch, _train_iou/n_batch))
 
         ## save a predition of training set
         for i in range(batch_size):
