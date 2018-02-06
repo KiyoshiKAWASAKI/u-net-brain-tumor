@@ -56,45 +56,6 @@ def u_net(x, is_train=False, reuse=False, n_out=1):
 	    conv1 = Conv2d(conv1, n_out, (1, 1), act=tf.nn.sigmoid, name='uconv1')
 	return conv1
 
-# Define discriminator (use auto encoder)
-"""
-def discriminator(inputs, is_train=True, reuse=None):
-	n_filter = 32
-	_, nx, ny, nz = inputs.get_shape().as_list()
-	w_init = tf.random_normal_initializer(stddev=0.02)
-
-	with tf.variable_scope("discriminator", reuse=reuse):
-		tl.layers.set_name_reuse(reuse)
-		d_inputs = InputLayer(inputs, name='d_input') # [10, 240, 240, 2]
-
-		# Encoder
-		conv0 = Conv2d(d_inputs, n_filter, 
-						(3, 3), (2, 2), 
-						act=tf.nn.elu,
-                        padding='SAME', 
-                        W_init=w_init, 
-                        name='conv0_0') # (nx/2,ny/2,n)
-
-		conv1 = Conv2d(conv0, 2*n_filter, 
-						(3, 3), (2, 2), 
-						act=tf.nn.elu,
-                        padding='SAME', 
-                        W_init=w_init, 
-                        name='conv1_0') # (nx/4,ny/4,2*n)
-		
-		conv2 = Conv2d(conv1, 4*n_filter, 
-						(3, 3), (2, 2), 
-						act=tf.nn.elu,
-                        padding='SAME', 
-                        W_init=w_init, 
-                        name='conv2_0') # (nx/8,ny/8,4*n)
-		# Decoder
-        net_deconv2 = DeConv2d(conv2, 2*n_filter, (3, 3), (nx/4, ny/4), (2, 2), name='deconv2_0')
-        net_deconv1 = DeConv2d(net_deconv2, n_filter, (3, 3), (nx/2, ny/2), (2, 2), name='deconv1_0')
-        net_deconv0 = DeConv2d(net_deconv1, nz, (3, 3), (nx, ny), (2, 2), act=tf.nn.sigmoid, name='deconv0_0')
-
-	return net_deconv0.outputs
-"""
 
 def discriminator(inputs, is_train=True, reuse=False):
     n_filter = 32

@@ -92,7 +92,7 @@ def main(task='all'):
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 25
-    print_freq_step = 100
+    print_freq_step = 1
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
@@ -143,18 +143,26 @@ def main(task='all'):
 
             ###======================== DEFINE LOSS =========================###
             ## Train losses
+            """
             out_seg = net_result
             train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
             train_dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
             train_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])
+            """
+            out_seg = net_result
+            train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=3)
+            train_dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=3)
+            train_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=3)
 
             recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             fake_iou_loss = tl.cost.iou_coe(d_out, concated, axis=[0,1,2,3])
-            fake_dice_hard = tl.cost.dice_hard_coe(d_out, concated, axis=[0,1,2,3])
+            #fake_dice_hard = tl.cost.dice_hard_coe(d_out, concated, axis=[0,1,2,3])
+            fake_dice_hard = tl.cost.dice_hard_coe(d_out, concated, axis=3)
 
             real_dice_loss = 1 - tl.cost.dice_coe(d_real, real_target, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             real_iou_loss = tl.cost.iou_coe(d_real, real_target, axis=[0,1,2,3])
-            real_dice_hard = tl.cost.dice_hard_coe(d_real, real_target, axis=[0,1,2,3])
+            #real_dice_hard = tl.cost.dice_hard_coe(d_real, real_target, axis=[0,1,2,3])
+            real_dice_hard = tl.cost.dice_hard_coe(d_real, real_target, axis=3)
 
             # Summary of G and D losses
             G_loss = recons_loss
@@ -163,10 +171,16 @@ def main(task='all'):
             k_update = kt.assign(kt + lamda * (gamma * real_dice_loss - recons_loss))
 
             ## test losses
+            """
             test_out_seg = net_test.outputs
             test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=[0,1,2,3])
             test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=[0,1,2,3])
+            """
+            test_out_seg = net_test.outputs
+            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=3)
+            test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=3)
+            test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=3)
 
         ###======================== DEFINE TRAIN OPTS =======================###
         g_vars = tl.layers.get_variables_with_name('u_net', True, True)
