@@ -272,10 +272,16 @@ def main(task='all'):
 
                 print("Epoch %d step %d. G loss: %f; D loss: %f; M is %f; kt is %f"
                 % (epoch, n_batch, loss_G, loss_D, convergence_metric, kt_for_print))
+                """
                 print("Fake dice-hard: %f; Fake IOU: %f"
                 % (total_dice_fake/n_batch, total_iou_fake/n_batch))
                 print("Real dice-hard: %f; Real IOU: %f"
                 % (total_dice_real/n_batch, total_iou_real/n_batch))
+                """
+                print("Fake dice-hard: %f; Fake IOU: %f"
+                % (_fakediceh, _fakeiou))
+                print("Real dice-hard: %f; Real IOU: %f"
+                % (_realdiceh, _realiou))
 
             ## check model fail
             if np.isnan(loss_G):
