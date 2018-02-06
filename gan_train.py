@@ -146,7 +146,7 @@ def main(task='all'):
             out_seg = net_result
             train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
             train_dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
-            train_loss = 1 - train_dice_hard
+            train_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])
 
             recons_loss = 1 - tl.cost.dice_coe(d_out, concated, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
             fake_iou_loss = tl.cost.iou_coe(d_out, concated, axis=[0,1,2,3])
