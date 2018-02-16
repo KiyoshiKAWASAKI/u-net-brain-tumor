@@ -10,6 +10,7 @@ import aapm_model as model
 def distort_imgs(data):
     """ data augumentation """
     x1, x2, x3, x4, y = data
+
     # x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],  # previous without this, hard-dice=83.7
     #                         axis=0, is_random=True) # up down
     x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
@@ -57,16 +58,27 @@ def main(task='all'):
 
     ###======================== LOAD DATA ===================================###
     # The data was preprocessed and saved in npy files
-    train_img_path = "../../../data/AAPM/npy_files/train_images.npy"
-    train_mask_path = "../../../data/AAPM/npy_files/train_mask.npy"
-    valid_img_path = "../../../data/AAPM/npy_files/valid_images.npy"
-    valid_mask_path = "../../../data/AAPM/npy_files/valid_images.npy"
+    train_img_path = "../../data/AAPM/npy_files/train_images.npy"
+    train_mask_path = "../../data/AAPM/npy_files/train_mask.npy"
+    valid_img_path = "../../data/AAPM/npy_files/valid_images.npy"
+    valid_mask_path = "../../data/AAPM/npy_files/valid_mask.npy"
     
     # Load npy files
     X_train = np.load(train_img_path)
     y_train = np.load(train_mask_path)
     X_test = np.load(valid_img_path)
     y_test = np.load(valid_mask_path)
+
+    # Reshape the label into 4 dimentions
+    d1_train, d2_train, d3_train = y_train.shape
+    d1_test, d2_test, d3_test = y_test.shape
+    y_train = np.reshape(y_train, (d1_train, d2_train, d3_train, 1))
+    y_test = np.reshape(y_test, (d1_test, d2_test, d3_test, 1))
+
+    print (X_train.shape)
+    print (y_train.shape)
+    print (X_test.shape)
+    print (y_test.shape)
 
 
     ###======================== HYPER-PARAMETERS ============================###
@@ -85,8 +97,8 @@ def main(task='all'):
     # show one slice
     X = np.asarray(X_train[80])
     y = np.asarray(y_train[80])
-    # print(X.shape, X.min(), X.max()) # (240, 240, 4) -0.380588 2.62761
-    # print(y.shape, y.min(), y.max()) # (240, 240, 1) 0 1
+    print(X.shape, X.min(), X.max()) # (240, 240, 4) -0.380588 2.62761
+    print(y.shape, y.min(), y.max()) # (240, 240, 1) 0 1
     nw, nh, nz = X.shape
     vis_imgs(X, y, 'samples/{}/_train_im.png'.format(task))
     # show data augumentation results
@@ -97,6 +109,7 @@ def main(task='all'):
         X_dis = np.concatenate((x_flair, x_t1, x_t1ce, x_t2), axis=2)
         # print(X_dis.shape, X_dis.min(), X_dis.max()) # (240, 240, 4) -0.380588233471 2.62376139209
         vis_imgs(X_dis, label, 'samples/{}/_train_im_aug{}.png'.format(task, i))
+        #print ("Vis finished.")
 
     with tf.device('/gpu:2'):
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
