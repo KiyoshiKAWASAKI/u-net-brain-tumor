@@ -97,8 +97,8 @@ def main(task='all'):
     # show one slice
     X = np.asarray(X_train[80])
     y = np.asarray(y_train[80])
-    print(X.shape, X.min(), X.max()) # (240, 240, 4) -0.380588 2.62761
-    print(y.shape, y.min(), y.max()) # (240, 240, 1) 0 1
+    print(X.shape, X.min(), X.max()) # (512, 512, 4) -0.380588 2.62761
+    print(y.shape, y.min(), y.max()) # (512, 512, 1) 0 1
     nw, nh, nz = X.shape
     vis_imgs(X, y, 'samples/{}/_train_im.png'.format(task))
     # show data augumentation results
@@ -140,12 +140,6 @@ def main(task='all'):
 
             ###======================== DEFINE LOSS =========================###
             ## Train losses
-            """
-            out_seg = net_result
-            train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=[0,1,2,3])
-            train_dice_hard = tl.cost.dice_hard_coe(out_seg, t_seg, axis=[0,1,2,3])
-            train_loss = 1 - tl.cost.dice_coe(out_seg, t_seg, axis=[0,1,2,3])
-            """
             out_seg = net_result
             train_iou = tl.cost.iou_coe(out_seg, t_seg, axis=3)
             train_dice_hard = tl.cost.dice_coe(out_seg, t_seg, axis=3)
@@ -168,12 +162,6 @@ def main(task='all'):
             k_update = kt.assign(kt + lamda * (gamma * real_dice_loss - recons_loss))
 
             ## test losses
-            """
-            test_out_seg = net_test.outputs
-            test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=[0,1,2,3])#, 'jaccard', epsilon=1e-5)
-            test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=[0,1,2,3])
-            test_dice_hard = tl.cost.dice_hard_coe(test_out_seg, t_seg, axis=[0,1,2,3])
-            """
             test_out_seg = net_test.outputs
             test_dice_loss = 1 - tl.cost.dice_coe(test_out_seg, t_seg, axis=3)
             test_iou_loss = tl.cost.iou_coe(test_out_seg, t_seg, axis=3)
@@ -319,12 +307,15 @@ def main(task='all'):
         print(" task: {}".format(task))
         ## save a predition of test set
         for i in range(batch_size):
+            vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
+            print ("Finished saving test result!")
+            """
             if np.max(b_images[i]) > 0:
                 vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
                 break
             elif i == batch_size-1:
                 vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
-
+            """
         ###======================== SAVE MODEL ==========================###
         tl.files.save_npz(net.all_params, name=save_dir+'/u_net_{}.npz'.format(task), sess=sess)
 
