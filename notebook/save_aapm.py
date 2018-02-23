@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 from skimage.draw import polygon
 from PIL import Image
 
+def rgb2gray(rgb):
+    return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
+
 # Set the data path
 train_image_path = "../../../data/AAPM/train_image/"
 train_mask_path = "../../../data/AAPM/train_mask/"
@@ -40,10 +43,10 @@ for patient in train_patients:
             full_path = os.path.join(path, file_name)
             
             patient_num = path[-3:]
-            print patient_num
+            print "*Patient number: " + str(patient_num)
             file_num = int(file_name[:-4])+1
             file_num = str(file_num)
-            print file_num
+            print "  File number: " + str(file_num)
             txt_path = mask_base_path + patient_num + '/'+file_num+'.txt'
             m = np.loadtxt(txt_path)
             train_mask.append(m)
@@ -51,9 +54,13 @@ for patient in train_patients:
             
             img = mpimg.imread(full_path)
             img_array = np.array(img)
-            train_image.append(img_array)
+            new_img_array = img_array[:,:,0:3]
+            gray_img = rgb2gray(new_img_array)
             
-            print(os.path.join(path, file_name))
+            print "  Shape: " + str(gray_img.shape)
+            train_image.append(gray_img)
+            
+            #print(os.path.join(path, file_name))
 
 np.save('../../../data/AAPM/npy_files/train_images', train_image)
 np.save('../../../data/AAPM/npy_files/train_mask', train_mask)
@@ -71,10 +78,10 @@ for patient in valid_patients:
             full_path = os.path.join(path, file_name)
             
             patient_num = path[-3:]
-            print patient_num
+            print "*Patient number: " + str(patient_num)
             file_num = int(file_name[:-4])+1
             file_num = str(file_num)
-            print file_num
+            print "  File number: " + str(file_num)
             txt_path = mask_base_path + patient_num + '/'+file_num+'.txt'
             m = np.loadtxt(txt_path)
             valid_mask.append(m)
@@ -82,9 +89,11 @@ for patient in valid_patients:
             
             img = mpimg.imread(full_path)
             img_array = np.array(img)
-            valid_image.append(img_array)
+            new_img_array = img_array[:,:,0:3]
+            gray_img = rgb2gray(new_img_array)
+            valid_image.append(gray_img)
             
-            print(os.path.join(path, file_name))
+            print"  Shape: " + str(gray_img.shape)
 
 np.save('../../../data/AAPM/npy_files/valid_images', valid_image)
 np.save('../../../data/AAPM/npy_files/valid_mask', valid_mask)

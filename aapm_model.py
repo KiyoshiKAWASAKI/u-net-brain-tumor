@@ -58,7 +58,7 @@ def u_net(x, is_train=False, reuse=False, n_out=1):
 
 
 def discriminator(inputs, is_train=True, reuse=False):
-    n_filter = 32
+    n_filter = 64
     _, nx, ny, nz = inputs.get_shape().as_list()
     print("nx, ny, nz : ", nx, ny, nz)
     # c_dim = FLAGS.x_dim + FLAGS.y_dim # two gray-scale image, 2

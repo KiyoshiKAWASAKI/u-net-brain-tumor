@@ -9,33 +9,31 @@ import aapm_model as model
 
 def distort_imgs(data):
     """ data augumentation """
-    x1, x2, x3, x4, y = data
+    x1, y = data
 
     # x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],  # previous without this, hard-dice=83.7
     #                         axis=0, is_random=True) # up down
-    x1, x2, x3, x4, y = tl.prepro.flip_axis_multi([x1, x2, x3, x4, y],
+    x1, y = tl.prepro.flip_axis_multi([x1, y],
                             axis=1, is_random=True) # left right
-    x1, x2, x3, x4, y = tl.prepro.elastic_transform_multi([x1, x2, x3, x4, y],
+    x1, y = tl.prepro.elastic_transform_multi([x1, y],
                             alpha=720, sigma=24, is_random=True)
-    x1, x2, x3, x4, y = tl.prepro.rotation_multi([x1, x2, x3, x4, y], rg=20,
+    x1, y = tl.prepro.rotation_multi([x1, y], rg=20,
                             is_random=True, fill_mode='constant') # nearest, constant
-    x1, x2, x3, x4, y = tl.prepro.shift_multi([x1, x2, x3, x4, y], wrg=0.10,
+    x1, y = tl.prepro.shift_multi([x1, y], wrg=0.10,
                             hrg=0.10, is_random=True, fill_mode='constant')
-    x1, x2, x3, x4, y = tl.prepro.shear_multi([x1, x2, x3, x4, y], 0.05,
+    x1, y = tl.prepro.shear_multi([x1,y], 0.05,
                             is_random=True, fill_mode='constant')
-    x1, x2, x3, x4, y = tl.prepro.zoom_multi([x1, x2, x3, x4, y],
+    x1, y = tl.prepro.zoom_multi([x1,y],
                             zoom_range=[0.9, 1.1], is_random=True,
                             fill_mode='constant')
-    return x1, x2, x3, x4, y
+    return x1, y
 
 def vis_imgs(X, y, path):
     """ show one slice """
     if y.ndim == 2:
         y = y[:,:,np.newaxis]
     assert X.ndim == 3
-    tl.vis.save_images(np.asarray([X[:,:,0,np.newaxis],
-        X[:,:,1,np.newaxis], X[:,:,2,np.newaxis],
-        X[:,:,3,np.newaxis], y]), size=(1, 5),
+    tl.vis.save_images(np.asarray([X[:,:,0,np.newaxis],y]), size=(1, 5),
         image_path=path)
 
 def vis_imgs2(X, y_, y, path):
@@ -44,11 +42,8 @@ def vis_imgs2(X, y_, y, path):
         y = y[:,:,np.newaxis]
     if y_.ndim == 2:
         y_ = y_[:,:,np.newaxis]
-    assert X.ndim == 3
-    tl.vis.save_images(np.asarray([X[:,:,0,np.newaxis],
-        X[:,:,1,np.newaxis], X[:,:,2,np.newaxis],
-        X[:,:,3,np.newaxis], y_, y]), size=(1, 6),
-        image_path=path)
+    #assert X.ndim == 3
+    tl.vis.save_images(np.asarray([X[:,:,0,np.newaxis],y_, y]), size=(1, 6), image_path=path)
 
 def main(task='all'):
     ## Create folder to save trained model and result images
@@ -70,6 +65,11 @@ def main(task='all'):
     y_test = np.load(valid_mask_path)
 
     # Reshape the label into 4 dimentions
+    d1, d2, d3 = X_train.shape
+    d1_t, d2_t, d3_t = X_test.shape
+    X_train = np.reshape(X_train, (d1, d2, d3, 1))
+    X_test = np.reshape(X_test, (d1_t, d2_t, d3_t, 1))
+
     d1_train, d2_train, d3_train = y_train.shape
     d1_test, d2_test, d3_test = y_test.shape
     y_train = np.reshape(y_train, (d1_train, d2_train, d3_train, 1))
@@ -97,16 +97,15 @@ def main(task='all'):
     # show one slice
     X = np.asarray(X_train[80])
     y = np.asarray(y_train[80])
-    print(X.shape, X.min(), X.max()) # (512, 512, 4) -0.380588 2.62761
+    print(X.shape, X.min(), X.max()) # (512, 512, 1) -0.380588 2.62761
     print(y.shape, y.min(), y.max()) # (512, 512, 1) 0 1
     nw, nh, nz = X.shape
     vis_imgs(X, y, 'samples/{}/_train_im.png'.format(task))
     # show data augumentation results
     for i in range(10):
-        x_flair, x_t1, x_t1ce, x_t2, label = distort_imgs([X[:,:,0,np.newaxis], X[:,:,1,np.newaxis],
-                X[:,:,2,np.newaxis], X[:,:,3,np.newaxis], y])#[:,:,np.newaxis]])
+        x, label = distort_imgs([X[:,:,0,np.newaxis], y])#[:,:,np.newaxis]])
         # print(x_flair.shape, x_t1.shape, x_t1ce.shape, x_t2.shape, label.shape) # (240, 240, 1) (240, 240, 1) (240, 240, 1) (240, 240, 1) (240, 240, 1)
-        X_dis = np.concatenate((x_flair, x_t1, x_t1ce, x_t2), axis=2)
+        X_dis = x
         # print(X_dis.shape, X_dis.min(), X_dis.max()) # (240, 240, 4) -0.380588233471 2.62376139209
         vis_imgs(X_dis, label, 'samples/{}/_train_im_aug{}.png'.format(task, i))
         #print ("Vis finished.")
@@ -127,9 +126,9 @@ def main(task='all'):
             
             # Concat the  generated results with ground truth label
             #concated = tf.concat([t_seg, net_result], axis=3) # [10, 240, 240, 2]
-            concated = tf.concat([t_image, net_result], axis=3) # [10, 240, 240, 5]
+            concated = tf.concat([t_image, net_result], axis=3) # [10, 240, 240, 2]
             #real_target = tf.concat([t_seg, t_seg], axis=3)
-            real_target = tf.concat([t_image, t_seg], axis=3) # [10, 240, 240, 5]
+            real_target = tf.concat([t_image, t_seg], axis=3) # [10, 240, 240, 2]
             
             # Send concated tensor into discriminator
             d_out = model.discriminator(concated, is_train=True, reuse = False)
@@ -205,12 +204,12 @@ def main(task='all'):
             step_time = time.time()
             ## data augumentation for a batch of Flair, T1, T1c, T2 images
             # and label maps synchronously.
-            data = tl.prepro.threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis],
-                    images[:,:,:,1, np.newaxis], images[:,:,:,2, np.newaxis],
-                    images[:,:,:,3, np.newaxis], labels)],
+            data = tl.prepro.threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis], labels)],
                     fn=distort_imgs) # (10, 5, 240, 240, 1)
-            b_images = data[:,0:4,:,:,:]  # (10, 4, 240, 240, 1)
-            b_labels = data[:,4,:,:,:]
+            print data.shape # (10, 2, 512, 512, 1)
+            b_images = data[:,0:1,:,:]  # (10, 4, 240, 240, 1) ==> (10, 1, 512, 512, 1)
+            b_labels = data[:,1,:,:]
+            print b_images.shape
             b_images = b_images.transpose((0,2,3,1,4))
             b_images.shape = (batch_size, nw, nh, nz)
 
