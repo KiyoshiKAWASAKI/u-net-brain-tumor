@@ -206,10 +206,10 @@ def main(task='all'):
             # and label maps synchronously.
             data = tl.prepro.threading_data([_ for _ in zip(images[:,:,:,0, np.newaxis], labels)],
                     fn=distort_imgs) # (10, 5, 240, 240, 1)
-            print data.shape # (10, 2, 512, 512, 1)
+            #print data.shape # (10, 2, 512, 512, 1)
             b_images = data[:,0:1,:,:]  # (10, 4, 240, 240, 1) ==> (10, 1, 512, 512, 1)
             b_labels = data[:,1,:,:]
-            print b_images.shape
+            #print b_images.shape
             b_images = b_images.transpose((0,2,3,1,4))
             b_images.shape = (batch_size, nw, nh, nz)
 
@@ -285,10 +285,10 @@ def main(task='all'):
         ## save a predition of training set
         for i in range(batch_size):
             if np.max(b_images[i]) > 0:
-                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}_{}.png".format(task, epoch, i))
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}_{}_{}.png".format(task, epoch, batch_size, i))
                 break
             elif i == batch_size-1:
-                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}_{}.png".format(task, epoch, i))
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}_{}_{}.png".format(task, epoch, batch_size, i))
 
         ###======================== EVALUATION ==========================###
         total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
@@ -306,7 +306,7 @@ def main(task='all'):
         print(" task: {}".format(task))
         ## save a predition of test set
         for i in range(batch_size):
-            vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}_{}.png".format(task, epoch, i))
+            vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}_{}_{}.png".format(task, epoch, batch_size, i))
             print ("Finished saving test result!")
             """
             if np.max(b_images[i]) > 0:
