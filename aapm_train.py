@@ -88,7 +88,7 @@ def main(task='all'):
     # decay_every = 100
     beta1 = 0.9
     n_epoch = 25
-    print_freq_step = 1
+    print_freq_step = 20
     kt = tf.Variable(0., trainable=False)
     gamma = 0.75
     lamda = 0.001
@@ -285,10 +285,10 @@ def main(task='all'):
         ## save a predition of training set
         for i in range(batch_size):
             if np.max(b_images[i]) > 0:
-                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}_{}.png".format(task, epoch, i))
                 break
             elif i == batch_size-1:
-                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}.png".format(task, epoch))
+                vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/train_{}_{}.png".format(task, epoch, i))
 
         ###======================== EVALUATION ==========================###
         total_dice, total_iou, total_dice_hard, n_batch = 0, 0, 0, 0
@@ -306,7 +306,7 @@ def main(task='all'):
         print(" task: {}".format(task))
         ## save a predition of test set
         for i in range(batch_size):
-            vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}.png".format(task, epoch))
+            vis_imgs2(b_images[i], b_labels[i], out[i], "samples/{}/test_{}_{}.png".format(task, epoch, i))
             print ("Finished saving test result!")
             """
             if np.max(b_images[i]) > 0:
